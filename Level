@@ -1,0 +1,96 @@
+class Level:
+    """关卡类，定义每个关卡的僵尸生成规则"""
+
+    def __init__(self, level_number, rows=5, cols=9):
+        self.level_number = level_number  # 关卡编号
+        self.rows = rows  # 游戏行数
+        self.cols = cols  # 游戏列数
+        self.wave_counter = 0  # 当前波次计数器
+        self.turn_counter = 0  # 回合计数器
+        self.zombies_spawned = 0  # 已生成的僵尸数量
+        self.zombies_remaining = 0  # 剩余僵尸数量
+        self.waves = self._setup_waves()  # 波次设置
+
+    def _setup_waves(self):
+        """设置当前关卡的僵尸波次，降低难度版本"""
+        if self.level_number == 1:
+            # 第一关：非常简单，只有少量普通僵尸
+            return [
+                {"count": 1, "type": "basic", "interval": 8},  # 第一波：数量减少，间隔延长
+                {"count": 2, "type": "basic", "interval": 6}  # 第二波：数量减少，间隔延长
+            ]
+        elif self.level_number == 2:
+            # 第二关：少量路障僵尸，主要还是普通僵尸
+            return [
+                {"count": 4, "type": "basic", "interval": 4},
+                {"count": 2, "type": "conehead", "interval": 5},  # 减少路障僵尸数量
+                {"count": 5, "type": "basic", "interval": 3}
+            ]
+        elif self.level_number == 3:
+            # 第三关：少量高级僵尸，增加普通僵尸作为主要敌人
+            return [
+                {"count": 4, "type": "basic", "interval": 4},
+                {"count": 2, "type": "fast", "interval": 5},  # 减少快速僵尸
+                {"count": 3, "type": "conehead", "interval": 4},  # 减少路障僵尸
+                {"count": 2, "type": "buckethead", "interval": 6},  # 少量铁桶僵尸
+                {"count": 5, "type": "basic", "interval": 3}
+            ]
+        else:
+            # 后续关卡可以在这里扩展
+            return [
+                {"count": 6, "type": "basic", "interval": 3},
+                {"count": 3, "type": "conehead", "interval": 4},
+                {"count": 2, "type": "buckethead", "interval": 5},
+                {"count": 2, "type": "fast", "interval": 4}
+            ]
+
+    def get_next_zombie(self):
+        """获取下一个要生成的僵尸（如果到时间的话）"""
+        self.turn_counter += 1
+
+        # 检查是否还有波次
+        if self.wave_counter >= len(self.waves):
+            return None
+
+        current_wave = self.waves[self.wave_counter]
+
+        # 检查当前波次是否已完成
+        if self.zombies_spawned >= current_wave["count"]:
+            # 重置当前波次计数器，进入下一波
+            self.wave_counter += 1
+            self.zombies_spawned = 0
+            self.turn_counter = 0
+            return self.get_next_zombie()  # 递归检查下一波
+
+        # 检查是否到了生成僵尸的时间
+        if self.turn_counter % current_wave["interval"] == 0:
+            self.zombies_spawned += 1
+            self.zombies_remaining += 1
+            return current_wave["type"]
+
+        return None
+
+    def zombie_eliminated(self):
+        """减少剩余僵尸数量"""
+        if self.zombies_remaining > 0:
+            self.zombies_remaining -= 1
+
+    def is_complete(self):
+        """检查关卡是否完成"""
+        return self.wave_counter >= len(self.waves) and self.zombies_remaining == 0
+
+    def get_current_wave_info(self):
+        """获取当前波次信息"""
+        if self.wave_counter >= len(self.waves):
+            return None
+        current_wave = self.waves[self.wave_counter]
+        return {
+            "wave_number": self.wave_counter + 1,
+            "total_waves": len(self.waves),
+            "spawned": self.zombies_spawned,
+            "total": current_wave["count"],
+            "type": current_wave["type"]
+        }
+
+    def __str__(self):
+        return f"关卡 {self.level_number} - 波次 {self.wave_counter + 1}/{len(self.waves)}"
